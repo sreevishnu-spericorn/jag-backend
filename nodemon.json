@@ -1,0 +1,6 @@
+{
+   "watch": ["./"],
+   "ignore": ["./**/*.spec.ts"],
+   "ext": "ts,html,css,ejs,json",
+   "exec": "ts-node bin/www.ts"
+}

@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // url      = env("DATABASE_URL")
+}
+
+enum RoleId {
+  User
+  UserAdmin
+}
+
+model User {
+  id             String   @id @default(uuid())
+  firstName      String?
+  lastName       String?
+  email          String   @unique
+  password       String
+  roleId         RoleId
+  phoneNumber    String
+  loginOtp       String?
+  loginOtpExpiry DateTime?
+  refreshTokenHash  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  clients Client[]
+}
+
+model Client {
+  id            String   @id @default(uuid())
+  userId        String
+  accountName   String
+  contactName   String
+  email         String   @unique
+  phone         String
+  logo          String? 
+  isDeleted     Boolean @default(false)
+  status        String   @default("Active")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  proposals Proposal[]
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  productName String @unique
+  status    Boolean  @default(true)
+  isDeleted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  publisherProducts PublisherProduct[]
+
+  proposalProducts ProposalProduct[]
+}
+
+model Publisher {
+  id            String    @id @default(uuid())
+  publisherName String
+  email         String     @unique
+  phoneNo       String?
+  whatsappNo    String?
+  logo          String?
+  w9Files       String[]
+  description   String?
+  isDeleted     Boolean    @default(false)
+
+  products      PublisherProduct[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  proposalProducts ProposalProduct[]
+}
+
+model PublisherProduct {
+  id          String    @id @default(uuid())
+  publisherId String
+  productId   String
+  price       Float
+
+  publisher   Publisher @relation(fields: [publisherId], references: [id], onDelete: Cascade)
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([publisherId, productId]) 
+}
+
+model Proposal {
+  id             String    @id @default(uuid())
+  clientId       String
+  proposalName   String
+  proposalStatus String     @default("Pending")
+  paymentStatus  String     @default("Unpaid")
+  proposalEmail  String
+  isDeleted      Boolean    @default(false)
+
+  client         Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  products       ProposalProduct[]
+
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+}
+
+model ProposalProduct {
+  id             String    @id @default(uuid())
+  proposalId     String
+  publisherId    String
+  productId      String
+  quantity       Int
+  price          Float   
+  total          Float   
+
+  proposal       Proposal   @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  publisher      Publisher  @relation(fields: [publisherId], references: [id], onDelete: Cascade)
+  product        Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+}
