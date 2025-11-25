@@ -8,7 +8,6 @@ const PUB_ASSETS_DIR = "public/assets/publishers";
 if (!fs.existsSync(PUB_ASSETS_DIR)) {
    fs.mkdirSync(PUB_ASSETS_DIR, { recursive: true });
 }
-console.log('git')
 
 const storage = multer.diskStorage({
    destination: (req: Request, file: Express.Multer.File, cb) => {
