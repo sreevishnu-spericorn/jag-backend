@@ -29,6 +29,12 @@ export async function createPublisher(
             "INVALID_PAYLOAD"
          );
 
+      if (!data.products)
+         throw new BadRequest(
+            "Products and must be available for publisher",
+            "Products Missing"
+         );
+
       const logoPath = buildPublisherLogoPath(logoFilename);
       const w9Paths = buildPublisherW9Paths(w9Filenames);
 

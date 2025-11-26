@@ -131,6 +131,10 @@ export async function getProposals(query: any) {
             {
                client: {
                   accountName: { contains: search, mode: "insensitive" },
+               },
+            },
+            {
+               client: {
                   email: { contains: search, mode: "insensitive" },
                },
             },
@@ -144,7 +148,6 @@ export async function getProposals(query: any) {
             skip,
             take: limit,
             orderBy: { createdAt: "desc" },
-            // Select ONLY the data we need for the list
             select: {
                id: true,
                clientId: true,
@@ -237,9 +240,6 @@ export async function getProposalById(id: string) {
    }
 }
 
-/**
- * Updates a Proposal, managing nested ProposalProducts (add/update/delete).
- */
 export async function updateProposal(id: string, data: ProposalUpdateDTO) {
    try {
       if (!isUUID(id))
@@ -251,6 +251,16 @@ export async function updateProposal(id: string, data: ProposalUpdateDTO) {
       });
       if (!existing || existing.isDeleted)
          throw new BadRequest("Proposal not found", "NOT_FOUND");
+
+      if (
+         existing.paymentStatus === "Paid" ||
+         existing.proposalStatus === "Paid"
+      ) {
+         throw new BadRequest(
+            "Cannot edit a proposal that has already been paid",
+            "EDIT_BLOCKED"
+         );
+      }
 
       const productsToUpdate = data.products;
       delete data.products;
@@ -357,9 +367,7 @@ export async function updateProposal(id: string, data: ProposalUpdateDTO) {
       throw err;
    }
 }
-/**
- * Soft deletes a Proposal.
- */
+
 export async function deleteProposal(id: string) {
    try {
       if (!isUUID(id))

@@ -5,9 +5,15 @@ import swaggerSpec from "./config/swagger-config.ts";
 import swaggerAuth from "./middleware/swaggarAuth.ts";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import helmet from "helmet";
+import paymentWebhook from "./api/Admin/proposalManagement/payment/webhook.ts";
 
 const app: Application = express();
+
+app.post(
+   "/api/proposal-payments/webhook",
+   express.raw({ type: "application/json" }),
+   paymentWebhook
+);
 
 app.use(express.json({ limit: "300mb" }));
 app.use(express.urlencoded({ limit: "300mb", extended: true }));

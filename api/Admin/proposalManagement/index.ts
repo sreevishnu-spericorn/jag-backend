@@ -1,6 +1,7 @@
 import { Router } from "express";
 import controller from "./controller.ts";
 import validator from "./validator.ts";
+import paymentRoute from "./payment/index.ts";
 
 const router = Router();
 
@@ -209,5 +210,7 @@ router.put("/:id", validator.updateProposal, controller.updateProposal);
  *         description: Invalid ID or deletion failed
  */
 router.delete("/:id", controller.deleteProposal);
+
+router.use("/payment", paymentRoute);
 
 export default router;

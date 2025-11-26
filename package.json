@@ -7,7 +7,7 @@
       "build": "tsc",
       "start": "node -bin/www.ts",
       "dev": "tsx watch bin/www.ts",
-      "listen": "stripe listen --forward-to localhost:3458/api/subscription/webhook",
+      "listen": "stripe listen --forward-to localhost:3457/api/proposal-payments/webhook",
       "seed": "tsx prisma/seed.ts"
    },
    "author": "",

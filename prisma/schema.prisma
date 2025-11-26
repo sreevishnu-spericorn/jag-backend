@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  // url      = env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 enum RoleId {
@@ -106,6 +106,8 @@ model Proposal {
 
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
+
+  payments Payment[]
 }
 
 model ProposalProduct {
@@ -123,4 +125,18 @@ model ProposalProduct {
 
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
+}
+
+model Payment {
+  id              String    @id @default(uuid())
+  proposalId      String
+  stripePaymentId String    @unique
+  amount          Float
+  currency        String    @default("usd")
+  status          String    @default("Succeeded")
+  paymentMethod   String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  proposal        Proposal  @relation(fields: [proposalId], references: [id], onDelete: Cascade)
 }

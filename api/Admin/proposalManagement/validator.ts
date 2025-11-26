@@ -20,7 +20,7 @@ const createSchema = Joi.object({
 const updateSchema = Joi.object({
    clientId: Joi.string().uuid().optional(),
    proposalName: Joi.string().max(255).optional(),
-   // ccEmail: Joi.string().email().optional(),
+   ccEmail: Joi.string().email().allow(null, "").optional(),
    proposalStatus: Joi.string()
       .valid("Pending", "Approved", "Rejected", "Sent", "Paid")
       .optional(),
