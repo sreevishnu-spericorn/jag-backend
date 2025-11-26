@@ -13,19 +13,18 @@ const productSchema = Joi.object({
 const createSchema = Joi.object({
    clientId: Joi.string().uuid().required(),
    proposalName: Joi.string().max(255).required(),
-   proposalEmail: Joi.string().email().required(),
+   ccEmail: Joi.string().email().allow(null, "").optional(),
    products: Joi.array().items(productSchema).min(1).required(),
 });
 
 const updateSchema = Joi.object({
    clientId: Joi.string().uuid().optional(),
    proposalName: Joi.string().max(255).optional(),
-   proposalEmail: Joi.string().email().optional(),
+   // ccEmail: Joi.string().email().optional(),
    proposalStatus: Joi.string()
       .valid("Pending", "Approved", "Rejected", "Sent", "Paid")
       .optional(),
    paymentStatus: Joi.string().valid("Unpaid", "Paid", "Canceled").optional(),
-   totalAmount: Joi.number().min(0).optional(),
    // For updates, the products array is optional but must match the schema if present
    products: Joi.array().items(productSchema).min(0).optional(),
 }).min(1);

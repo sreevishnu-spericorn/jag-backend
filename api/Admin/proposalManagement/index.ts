@@ -54,7 +54,6 @@ const router = Router();
  *             required:
  *               - clientId
  *               - proposalName
- *               - proposalEmail
  *               - products
  *             properties:
  *               clientId:
@@ -63,7 +62,7 @@ const router = Router();
  *                 description: ID of the client this proposal is for.
  *               proposalName:
  *                 type: string
- *               proposalEmail:
+ *               ccEmail:
  *                 type: string
  *                 format: email
  *               products:
@@ -74,7 +73,7 @@ const router = Router();
  *             example:
  *               clientId: "c4d3e2a1-b0c9-8d7f-6e5a-4b3c2d1e0f98"
  *               proposalName: "Q4 Marketing Campaign"
- *               proposalEmail: "contact@clientcorp.com"
+ *               ccEmail: "contact@clientcorp.com"
  *               products:
  *                 - publisherId: "p1111111-a1b2-c3d4-e5f6-a1b2c3d4e5f6"
  *                   productId: "i2222222-a1b2-c3d4-e5f6-a1b2c3d4e5f6"
@@ -171,7 +170,7 @@ router.get("/:id", controller.getProposalById);
  *               paymentStatus:
  *                 type: string
  *                 enum: [Unpaid, Paid, Canceled]
- *               proposalEmail:
+ *               ccEmail:
  *                 type: string
  *                 format: email
  *               products:

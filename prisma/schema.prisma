@@ -98,7 +98,7 @@ model Proposal {
   proposalName   String
   proposalStatus String     @default("Pending")
   paymentStatus  String     @default("Unpaid")
-  proposalEmail  String
+  ccEmail        String?
   isDeleted      Boolean    @default(false)
 
   client         Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)

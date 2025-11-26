@@ -22,7 +22,7 @@ interface ProposalProductDTO {
 interface ProposalCreateDTO {
    clientId: string;
    proposalName: string;
-   proposalEmail: string;
+   ccEMail?: string | null;
    totalAmount: number;
    products: ProposalProductDTO[];
 }
@@ -30,7 +30,7 @@ interface ProposalCreateDTO {
 interface ProposalUpdateDTO {
    clientId?: string;
    proposalName?: string;
-   proposalEmail?: string;
+   ccEMail?: string | null;
    proposalStatus?: "Pending" | "Approved" | "Rejected" | "Sent" | "Paid";
    paymentStatus?: "Unpaid" | "Paid" | "Canceled";
    totalAmount?: number;
@@ -79,7 +79,7 @@ export async function createProposal(data: ProposalCreateDTO) {
             data: {
                clientId: data.clientId,
                proposalName: data.proposalName,
-               proposalEmail: data.proposalEmail,
+               ccEmail: data.ccEMail ?? null,
             },
          });
 
@@ -109,7 +109,6 @@ export async function createProposal(data: ProposalCreateDTO) {
    }
 }
 
-
 export async function getProposals(query: any) {
    try {
       const page = Math.max(Number(query.page) || 1, 1);
@@ -129,10 +128,10 @@ export async function getProposals(query: any) {
       if (search) {
          where.OR = [
             { proposalName: { contains: search, mode: "insensitive" } },
-            { proposalEmail: { contains: search, mode: "insensitive" } },
             {
                client: {
                   accountName: { contains: search, mode: "insensitive" },
+                  email: { contains: search, mode: "insensitive" },
                },
             },
          ];
@@ -152,7 +151,6 @@ export async function getProposals(query: any) {
                proposalName: true,
                proposalStatus: true,
                paymentStatus: true,
-               proposalEmail: true,
                createdAt: true,
                updatedAt: true,
                isDeleted: true,
