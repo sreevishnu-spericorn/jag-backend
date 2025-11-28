@@ -4,6 +4,8 @@ import {
    buildPublisherLogoPath,
    buildPublisherW9Paths,
    removeFileIfExists,
+   removePathIfExists,
+   safeJsonArray,
 } from "../../../utils/publishers/publisherFileManagement.ts";
 import {
    safeRedisGet,
@@ -14,8 +16,7 @@ import {
    CreatePublisherDTO,
    UpdatePublisherDTO,
 } from "../../../types/publisherTypes/publisherTypes.ts";
-import path from "node:path";
-import fs from "fs";
+import { parseListQuery } from "../../../utils/common/query.ts";
 
 export async function createPublisher(
    data: CreatePublisherDTO,
@@ -66,20 +67,23 @@ export async function createPublisher(
                "Products Required"
             );
          }
+
          if (
             data.products &&
             Array.isArray(data.products) &&
             data.products.length
          ) {
-            for (const p of data.products) {
-               await tx.publisherProduct.create({
-                  data: {
-                     publisherId: publisher.id,
-                     productId: p.productId,
-                     price: p.price,
-                  },
-               });
-            }
+            await Promise.all(
+               data.products.map((p) =>
+                  tx.publisherProduct.create({
+                     data: {
+                        publisherId: publisher.id,
+                        productId: p.productId,
+                        price: p.price,
+                     },
+                  })
+               )
+            );
          }
 
          return publisher;
@@ -96,21 +100,8 @@ export async function createPublisher(
 
 export const getPublishers = async (query: any) => {
    try {
-      const page = Math.max(Number(query.page) || 1, 1);
-      const limit = Math.min(Math.max(Number(query.limit) || 10, 1), 100);
-      const search = query.search?.trim() || "";
-      const normalizeDate = (date: Date) => {
-         const normalized = new Date(date);
-         normalized.setHours(0, 0, 0, 0);
-         return normalized;
-      };
-      const fromDate = query.fromDate
-         ? normalizeDate(new Date(query.fromDate))
-         : null;
-      const toDate = query.toDate
-         ? normalizeDate(new Date(query.toDate))
-         : null;
-
+      const { page, limit, search, fromDate, toDate, skip } =
+         parseListQuery(query);
       const cacheKey = `publishers:page=${page}:limit=${limit}:search=${search}:fromDate=${fromDate?.toISOString()}:toDate=${toDate?.toISOString()}`;
       const cached = await safeRedisGet(cacheKey);
       if (cached) return JSON.parse(cached);
@@ -134,8 +125,6 @@ export const getPublishers = async (query: any) => {
             lte: toDate,
          };
       }
-
-      const skip = (page - 1) * limit;
 
       const [publishers, total] = await Promise.all([
          prisma.publisher.findMany({
@@ -188,46 +177,26 @@ export async function getPublisherById(id: string) {
 
 export async function updatePublisher(
    id: string,
-   // data: UpdatePublisherDTO,
    rawData: any,
    logoFilename?: string,
-   w9Filenames?: string[],
-   removedW9Files: string[] = []
+   w9Filenames?: string[]
 ) {
    try {
-      let removedW9Files: string[] = [];
-      if (rawData.removedW9Files) {
-         try {
-            removedW9Files = JSON.parse(rawData.removedW9Files);
-            if (!Array.isArray(removedW9Files)) removedW9Files = [];
-         } catch (e) {
-            throw new BadRequest(
-               "Invalid removedW9Files payload",
-               "INVALID_PAYLOAD"
-            );
-         }
-      }
-      let products: any[] | undefined = undefined;
-      if (rawData.products) {
-         try {
-            const parsed =
-               typeof rawData.products === "string"
-                  ? JSON.parse(rawData.products)
-                  : rawData.products;
-            if (Array.isArray(parsed)) products = parsed;
-         } catch (e) {
-            throw new BadRequest("Invalid products payload", "INVALID_PAYLOAD");
-         }
-      }
+
+      const removedW9Files = safeJsonArray(rawData.removedW9Files);
+      const products = safeJsonArray(rawData.products);
+
       const data: UpdatePublisherDTO = {
          ...rawData,
          ...(products ? { products } : {}),
       };
       delete (data as any).removedW9Files;
+
       const existing = await prisma.publisher.findUnique({
          where: { id },
          include: { products: true },
       });
+
       if (!existing || existing.isDeleted)
          throw new BadRequest("Publisher not found", "NOT_FOUND");
 
@@ -241,36 +210,27 @@ export async function updatePublisher(
                "EMAIL_EXISTS"
             );
       }
-
       const logoPath = logoFilename
          ? buildPublisherLogoPath(logoFilename)
          : undefined;
-      const newW9Paths = w9Filenames
-         ? buildPublisherW9Paths(w9Filenames)
-         : undefined;
 
-      const removedSet = new Set(
-         (removedW9Files || []).filter((x) => typeof x === "string")
-      );
+      const newW9Paths = w9Filenames ? buildPublisherW9Paths(w9Filenames) : [];
 
-      const filteredW9 = (existing.w9Files || []).filter(
-         (f) => !removedSet.has(f)
-      );
+      const removedSet = new Set(removedW9Files);
 
-      const finalW9Files = newW9Paths
-         ? [...filteredW9, ...newW9Paths]
-         : filteredW9;
+      const finalW9Files = [
+         ...existing.w9Files.filter((f) => !removedSet.has(f)),
+         ...newW9Paths,
+      ];
 
       const updated = await prisma.$transaction(async (tx) => {
          const updateData: any = {
-            ...(data.publisherName
-               ? { publisherName: data.publisherName }
-               : {}),
-            ...(data.email ? { email: data.email } : {}),
-            ...(data.phoneNo ? { phoneNo: data.phoneNo } : {}),
-            ...(data.whatsappNo ? { whatsappNo: data.whatsappNo } : {}),
-            ...(data.description ? { description: data.description } : {}),
-            ...(logoPath ? { logo: logoPath } : {}),
+            ...(data.publisherName && { publisherName: data.publisherName }),
+            ...(data.email && { email: data.email }),
+            ...(data.phoneNo && { phoneNo: data.phoneNo }),
+            ...(data.whatsappNo && { whatsappNo: data.whatsappNo }),
+            ...(data.description && { description: data.description }),
+            ...(logoPath && { logo: logoPath }),
             w9Files: finalW9Files,
          };
 
@@ -279,40 +239,38 @@ export async function updatePublisher(
             data: updateData,
          });
 
-         if (data.products && Array.isArray(data.products)) {
-            const providedProductIds = data.products.map(
-               (p: any) => p.productId
+         if (Array.isArray(data.products)) {
+            const providedIds = data.products.map((p) => p.productId);
+
+            const existingMap = new Map(
+               existing.products.map((p) => [p.productId, p])
             );
 
-            for (const p of data.products) {
-               const found = await tx.publisherProduct.findUnique({
-                  where: {
-                     publisherId_productId: {
-                        publisherId: id,
-                        productId: p.productId,
-                     },
-                  } as any,
-               });
+            const tasks = data.products.map((p) => {
+               const found = existingMap.get(p.productId);
+
                if (found) {
-                  await tx.publisherProduct.update({
+                  return tx.publisherProduct.update({
                      where: { id: found.id },
                      data: { price: p.price },
                   });
-               } else {
-                  await tx.publisherProduct.create({
-                     data: {
-                        publisherId: id,
-                        productId: p.productId,
-                        price: p.price,
-                     },
-                  });
                }
-            }
+
+               return tx.publisherProduct.create({
+                  data: {
+                     publisherId: id,
+                     productId: p.productId,
+                     price: p.price,
+                  },
+               });
+            });
+
+            await Promise.all(tasks);
 
             await tx.publisherProduct.deleteMany({
                where: {
                   publisherId: id,
-                  productId: { notIn: providedProductIds },
+                  productId: { notIn: providedIds },
                },
             });
          }
@@ -320,46 +278,26 @@ export async function updatePublisher(
          return pub;
       });
 
-      if (Array.isArray(removedW9Files) && removedW9Files.length > 0) {
-         for (const filePath of removedW9Files) {
-            try {
-               const filename = path.basename(filePath);
-               const fullPath = path.join(
-                  process.cwd(),
-                  "public",
-                  filenameStartsWithSlash(filePath)
-                     ? filePath.replace(/^\//, "")
-                     : filePath
-               );
-               if (fs.existsSync(fullPath)) {
-                  fs.unlinkSync(fullPath);
-               }
-            } catch (err) {
-               console.error(
-                  "Failed to delete removed w9 file:",
-                  filePath,
-                  err
-               );
-            }
-         }
-      }
+      await Promise.all([
+         ...removedW9Files.map(async (filePath:any) =>
+            removePathIfExists(filePath)
+         ),
+         existing.logo &&
+            logoPath &&
+            existing.logo !== logoPath &&
+            removePathIfExists(existing.logo),
+      ]);
+      await Promise.all([
+         safeRedisDelPattern(`publisher:id=${id}`),
+         safeRedisDelPattern("publishers:*"),
+      ]);
 
-      if (logoPath && existing.logo && existing.logo !== logoPath) {
-         await removeFileIfExists(existing.logo);
-      }
-
-      await safeRedisDelPattern(`publisher:id=${id}`);
-      await safeRedisDelPattern("publishers:*");
       return updated;
    } catch (err: any) {
       if (err.code === "P2002")
          throw new BadRequest("Unique constraint failed", "DUPLICATE_ENTRY");
       throw err;
    }
-}
-
-function filenameStartsWithSlash(p: string) {
-   return typeof p === "string" && p.startsWith("/");
 }
 
 export async function deletePublisher(id: string) {

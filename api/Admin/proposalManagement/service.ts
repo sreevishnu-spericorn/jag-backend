@@ -1,5 +1,6 @@
 import prisma from "../../../config/prisma.ts";
 import BadRequest from "../../../helper/exception/badRequest.ts";
+import { parseListQuery } from "../../../utils/common/query.ts";
 import {
    safeRedisDelPattern,
    safeRedisGet,
@@ -111,13 +112,12 @@ export async function createProposal(data: ProposalCreateDTO) {
 
 export async function getProposals(query: any) {
    try {
-      const page = Math.max(Number(query.page) || 1, 1);
-      const limit = Math.min(Math.max(Number(query.limit) || 10, 1), 100);
-      const search = query.search?.trim() || "";
-      const skip = (page - 1) * limit;
+      const { page, limit, search, fromDate, toDate, skip } =
+         parseListQuery(query);
 
-      const cacheKey = buildCacheKey(query);
+      const cacheKey = `proposals:page=${page}:limit=${limit}${query.q ? `:q=${query.q}` : ""}:search=${search}:fromDate=${fromDate?.toISOString()}:toDate=${toDate?.toISOString()}`;
       const cached = await safeRedisGet(cacheKey);
+
       if (cached) {
          console.log("💾 Proposal Data from Redis Cache");
          return JSON.parse(cached);
@@ -141,7 +141,17 @@ export async function getProposals(query: any) {
          ];
       }
 
-      // 1. Fetch the Paginated Proposals and Total Count based on criteria
+      if (fromDate) {
+         where.createdAt = { gte: fromDate };
+      }
+
+      if (toDate) {
+         where.createdAt = {
+            ...where.createdAt,
+            lte: toDate,
+         };
+      }
+
       const [baseProposals, total] = await Promise.all([
          prisma.proposal.findMany({
             where,

@@ -19,49 +19,38 @@ import {
    buildLogoPath,
    removeFileIfExists,
 } from "../../../utils/clients/clientFileManagement.ts";
+import { parseListQuery } from "../../../utils/common/query.ts";
 
-// const RESET_PASSWORD_AUDIENCE = "resetPassword";
-// const TEMP_TOKEN_SECRET = process.env.JWT_SECRET as string;
-// const CLIENT_FRONTEND = process.env.CLIENT_URL;
-
-async function createClient(data: ClientCreateDTO, logoFilename?: string) {
+export async function createClient(
+   data: ClientCreateDTO,
+   logoFilename?: string
+) {
    try {
-      if (!data.email)
+      if (!data.email) {
          throw new BadRequest("Email is required", "INVALID_PAYLOAD");
-
-      console.log("Data is", data);
-
-      const randomPassword = crypto.randomBytes(6).toString("hex");
-      const hashedPassword = await bcrypt.hash(randomPassword, 10);
+      }
 
       const logoPath = buildLogoPath(logoFilename);
 
+      const [existingUser, existingClient] = await Promise.all([
+         prisma.user.findUnique({ where: { email: data.email } }),
+         prisma.client.findUnique({ where: { email: data.email } }),
+      ]);
+
+      if (existingUser || existingClient) {
+         throw new BadRequest("Email already exists", "EMAIL_EXISTS");
+      }
+
+      const plainPassword = crypto.randomBytes(6).toString("hex");
+      const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
       const result = await prisma.$transaction(async (tx) => {
-         const existingUser = await tx.user.findUnique({
-            where: { email: data.email },
-         });
-         console.log(existingUser);
-         if (existingUser)
-            throw new BadRequest(
-               "User with this email already exists",
-               "EMAIL_EXISTS"
-            );
-
-         const existingClient = await tx.client.findUnique({
-            where: { email: data.email },
-         });
-         if (existingClient)
-            throw new BadRequest(
-               "Client with this email already exists",
-               "EMAIL_EXISTS"
-            );
-
          const user = await tx.user.create({
             data: {
                email: data.email,
                password: hashedPassword,
-               firstName: data.contactName ?? undefined,
-               phoneNumber: data.phone ?? undefined,
+               firstName: data.contactName || undefined,
+               phoneNumber: data.phone,
                roleId: RoleId.User,
             },
          });
@@ -77,69 +66,28 @@ async function createClient(data: ClientCreateDTO, logoFilename?: string) {
             },
          });
 
-         return { user, client };
+         return client;
       });
-
-      await safeRedisDelPattern("clients:*");
+      
+      safeRedisDelPattern("clients:*");
 
       if (data.sendWelcome) {
-         //    try {
-         //       const token = jwt.sign(
-         //          { id: result.user.id, email: result.user.email },
-         //          TEMP_TOKEN_SECRET,
-         //          {
-         //             expiresIn: "15m",
-         //             audience: RESET_PASSWORD_AUDIENCE,
-         //          }
-         //       );
-         //       const resetLink = `${CLIENT_FRONTEND}/forgot-password?token=${token}`;
-         //       const html = `
-         //     <p>Hi ${result.client.contactName || result.user.email},</p>
-         //     <p>A client account has been created for you. Please set your password using the link below:</p>
-         //     <p><a href="${resetLink}">Set your password</a></p>
-         //     <p>This link expires in 15 minutes.</p>
-         //   `;
-         //       await transporter.sendMail({
-         //          from: process.env.MAILER_FROM,
-         //          to: result.user.email,
-         //          subject: "Welcome — Set your password",
-         //          html,
-         //       });
-         //    } catch (err) {
-         //       console.error("Email sending failed:", err);
-         //    }
+         // sendWelcomeEmail(data.email, plainPassword);   // implement later
       }
 
-      return result.client;
-   } catch (error: any) {
-      if (error.code === "P2002") {
+      return result;
+   } catch (err: any) {
+      if (err.code === "P2002") {
          throw new BadRequest("Unique constraint failed", "DUPLICATE_ENTRY");
       }
-      console.error(error);
-      throw error;
+      throw err;
    }
 }
 
 const getClients = async (query: any) => {
    try {
-      const page = Math.max(Number(query.page) || 1, 1);
-      const limit = Math.min(Math.max(Number(query.limit) || 10, 1), 100);
-      const search = query.search?.trim() || "";
-
-      const normalizeDate = (date: Date) => {
-         const d = new Date(date);
-         d.setHours(0, 0, 0, 0);
-         return d;
-      };
-
-      const fromDate = query.fromDate
-         ? normalizeDate(new Date(query.fromDate))
-         : null;
-      const toDate = query.toDate
-         ? normalizeDate(new Date(query.toDate))
-         : null;
-
-      const skip = (page - 1) * limit;
+      const { page, limit, search, fromDate, toDate, skip } =
+         parseListQuery(query);
 
       const cacheKey = `clients:page=${page}:limit=${limit}${query.q ? `:q=${query.q}` : ""}:search=${search}:fromDate=${fromDate?.toISOString()}:toDate=${toDate?.toISOString()}`;
 

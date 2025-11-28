@@ -17,6 +17,7 @@ const createProposal = async (req: Request, res: Response) => {
 
 const getProposals = async (req: Request, res: Response) => {
    try {
+      console.log("REQQQQQQQQQQQQQ", req.query);
       const result = await service.getProposals(req.query);
       return res.json(goodResponse(result, "Proposal list fetched"));
    } catch (error: any) {

@@ -22,9 +22,6 @@ const signup = async (req: Request, res: Response): Promise<Response> => {
 const verifyOtp = async (req: Request, res: Response): Promise<Response> => {
    try {
       const result = await service.verifyOtp(req.body);
-
-      console.log("REFRESHHHHHHHHHH TOkENNNNNNNNNN", result.refreshToken);
-
       res.cookie("refreshToken", result.refreshToken, {
          httpOnly: true,
          secure: false,

@@ -31,8 +31,6 @@ export const verifyToken = (
       }) as JwtPayload & { roleId?: string };
 
       console.log("Decoded token:", decoded);
-      // const decodedUnsafe = jwt.decode(token);
-      // console.log("Decoded UNSAFE:", decodedUnsafe);
 
       req.user = decoded;
       next();
@@ -44,6 +42,5 @@ export const verifyToken = (
    }
 };
 
-// Role-based authorization
 
 export default { verifyToken };

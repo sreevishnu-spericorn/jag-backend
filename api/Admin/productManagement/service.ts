@@ -1,5 +1,6 @@
 import prisma from "../../../config/prisma.ts";
 import BadRequest from "../../../helper/exception/badRequest.ts";
+import { parseListQuery } from "../../../utils/common/query.ts";
 import {
    safeRedisDelPattern,
    safeRedisGet,
@@ -29,21 +30,7 @@ const createProduct = async (data: { productName: string }) => {
 
 const getProducts = async (query: any) => {
    try {
-      const page = Math.max(Number(query.page) || 1, 1);
-      const limit = Math.min(Math.max(Number(query.limit) || 10, 1), 100);
-      const search = query.search?.trim() || "";
-      const normalizeDate = (date: Date) => {
-         const normalized = new Date(date);
-         normalized.setHours(0, 0, 0, 0);
-         return normalized;
-      };
-
-      const fromDate = query.fromDate
-         ? normalizeDate(new Date(query.fromDate))
-         : null;
-      const toDate = query.toDate
-         ? normalizeDate(new Date(query.toDate))
-         : null;
+      const { page, limit, search, fromDate, toDate, skip } = parseListQuery(query);
 
       const cacheKey = `products:page=${page}:limit=${limit}:search=${search}:fromDate=${fromDate?.toISOString()}:toDate=${toDate?.toISOString()}`;
 
@@ -54,9 +41,6 @@ const getProducts = async (query: any) => {
       }
 
       console.log("🗄 Fetching from DB");
-
-      const skip = (page - 1) * limit;
-
       const whereCondition: any = { isDeleted: false };
 
       if (search) {
