@@ -12,11 +12,14 @@ import {
    safeRedisSet,
    safeRedisDelPattern,
 } from "../../../utils/publishers/publisherRedis.ts";
+import bcrypt from "bcrypt";
+import crypto from "crypto";
 import {
    CreatePublisherDTO,
    UpdatePublisherDTO,
 } from "../../../types/publisherTypes/publisherTypes.ts";
 import { parseListQuery } from "../../../utils/common/query.ts";
+import { RoleId } from "@prisma/client";
 
 export async function createPublisher(
    data: CreatePublisherDTO,
@@ -40,17 +43,42 @@ export async function createPublisher(
       const w9Paths = buildPublisherW9Paths(w9Filenames);
 
       const result = await prisma.$transaction(async (tx) => {
-         const existing = await tx.publisher.findUnique({
+         const existingUser = await tx.user.findUnique({
             where: { email: data.email },
          });
-         if (existing)
+
+         if (existingUser)
+            throw new BadRequest(
+               "User with this email already exists",
+               "USER_EXISTS"
+            );
+
+         const existingPublisher = await tx.publisher.findUnique({
+            where: { email: data.email },
+         });
+
+         if (existingPublisher)
             throw new BadRequest(
                "Publisher with this email already exists",
-               "EMAIL_EXISTS"
+               "PUBLISHER_EXISTS"
             );
+
+         const plainPassword = crypto.randomBytes(6).toString("hex");
+         const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
+         const user = await tx.user.create({
+            data: {
+               email: data.email,
+               firstName: data.publisherName,
+               password: hashedPassword,
+               roleId: RoleId.Publisher,
+               phoneNumber: data.phoneNo ?? "",
+            },
+         });
 
          const publisher = await tx.publisher.create({
             data: {
+               userId: user.id,
                publisherName: data.publisherName,
                email: data.email,
                phoneNo: data.phoneNo,
@@ -125,7 +153,7 @@ export const getPublishers = async (query: any) => {
             lte: toDate,
          };
       }
-
+      
       const [publishers, total] = await Promise.all([
          prisma.publisher.findMany({
             where,
@@ -182,7 +210,6 @@ export async function updatePublisher(
    w9Filenames?: string[]
 ) {
    try {
-
       const removedW9Files = safeJsonArray(rawData.removedW9Files);
       const products = safeJsonArray(rawData.products);
 
@@ -279,7 +306,7 @@ export async function updatePublisher(
       });
 
       await Promise.all([
-         ...removedW9Files.map(async (filePath:any) =>
+         ...removedW9Files.map(async (filePath: any) =>
             removePathIfExists(filePath)
          ),
          existing.logo &&

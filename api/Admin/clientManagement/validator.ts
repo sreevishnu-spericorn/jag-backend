@@ -17,7 +17,6 @@ const updateSchema = Joi.object({
    phone: Joi.string().optional(),
    welcomeEmail: Joi.boolean().optional(),
 
-   // logo will be available as req.file so skip strict validation
    logo: Joi.any().optional(),
 }).min(1);
 

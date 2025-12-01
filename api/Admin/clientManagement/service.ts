@@ -2,7 +2,8 @@ import prisma from "../../../config/prisma.ts";
 import BadRequest from "../../../helper/exception/badRequest.ts";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
-import jwt from "jsonwebtoken";
+import path from "path";
+import ejs from "ejs";
 
 import { RoleId } from "@prisma/client";
 import {
@@ -51,7 +52,7 @@ export async function createClient(
                password: hashedPassword,
                firstName: data.contactName || undefined,
                phoneNumber: data.phone,
-               roleId: RoleId.User,
+               roleId: RoleId.Client,
             },
          });
 
@@ -68,11 +69,30 @@ export async function createClient(
 
          return client;
       });
-      
+
       safeRedisDelPattern("clients:*");
 
       if (data.sendWelcome) {
-         // sendWelcomeEmail(data.email, plainPassword);   // implement later
+         const payload = {
+            email: data.email,
+            userName: data.accountName,
+            userAvatar: logoPath
+               ? `${process.env.SERVER_URL}/public/assets/${logoPath}`
+               : null,
+            setupUrl: `${process.env.CLIENT_URL}/change-password?email=${data.email}`,
+         };
+
+         const html = await ejs.renderFile(
+            path.resolve("modules/template/accountSetup.ejs"),
+            { payload }
+         );
+
+         await transporter.sendMail({
+            from: process.env.MAILER_FROM,
+            to: data.email,
+            subject: "Your Account Setup Link",
+            html,
+         });
       }
 
       return result;

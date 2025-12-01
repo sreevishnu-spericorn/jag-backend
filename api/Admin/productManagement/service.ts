@@ -7,17 +7,26 @@ import {
    safeRedisSet,
 } from "../../../utils/products/productRedis.ts";
 
-const createProduct = async (data: { productName: string }) => {
+const createProduct = async (data: {
+   productName: string;
+   customFields?: any[];
+}) => {
    try {
-      const exists = await prisma.product.findUnique({
-         where: { productName: data.productName },
+      const exists = await prisma.product.findFirst({
+         where: {
+            productName: data.productName,
+            isDeleted: false, // check only active products
+         },
       });
 
       if (exists)
          throw new BadRequest("Product already exists", "DUPLICATE_ENTRY");
 
       const product = await prisma.product.create({
-         data: { productName: data.productName },
+         data: {
+            productName: data.productName,
+            customFields: data.customFields || [],
+         },
       });
 
       await safeRedisDelPattern("products:*");
@@ -30,7 +39,8 @@ const createProduct = async (data: { productName: string }) => {
 
 const getProducts = async (query: any) => {
    try {
-      const { page, limit, search, fromDate, toDate, skip } = parseListQuery(query);
+      const { page, limit, search, fromDate, toDate, skip } =
+         parseListQuery(query);
 
       const cacheKey = `products:page=${page}:limit=${limit}:search=${search}:fromDate=${fromDate?.toISOString()}:toDate=${toDate?.toISOString()}`;
 
@@ -102,7 +112,13 @@ const updateProduct = async (id: string, data: any) => {
 
       await safeRedisDelPattern("products:*");
 
-      return await prisma.product.update({ where: { id }, data });
+      return await prisma.product.update({
+         where: { id },
+         data: {
+            productName: data.productName,
+            customFields: data.customFields || product.customFields,
+         },
+      });
    } catch (err) {
       throw err;
    }

@@ -3,48 +3,48 @@ import controller from "./controller.ts";
 import validator from "./validator.ts";
 
 const router = Router();
-/**
- * @swagger
- * /api/auth/signup:
- *   post:
- *     summary: Register a new user
- *     tags:
- *       - Auth
- *     requestBody:
- *       content:
- *         application/json:
- *          schema:
- *            type: object
- *            properties:
- *              email:
- *                type: string
- *                format: email
- *                required: true
- *                example: 'user@exmp.com'
- *              password:
- *                 type: string
- *                 required: true
- *                 minLength: 8
- *              firstName:
- *                type: string
- *                required: true
- *              lastName:
- *                type: string
- *                required: true
- *              phoneNumber:
- *                type: string
- *                required: true
- *                example: '1234567890'
- *     responses:
- *       200:
- *         description: User created successfully
- *       400:
- *         description: Bad request
- *       500:
- *         description: Internal server error
- *
- */
-router.post("/signup", validator.signup, controller.signup);
+// /**
+//  * @swagger
+//  * /api/auth/signup:
+//  *   post:
+//  *     summary: Register a new user
+//  *     tags:
+//  *       - Auth
+//  *     requestBody:
+//  *       content:
+//  *         application/json:
+//  *          schema:
+//  *            type: object
+//  *            properties:
+//  *              email:
+//  *                type: string
+//  *                format: email
+//  *                required: true
+//  *                example: 'user@exmp.com'
+//  *              password:
+//  *                 type: string
+//  *                 required: true
+//  *                 minLength: 8
+//  *              firstName:
+//  *                type: string
+//  *                required: true
+//  *              lastName:
+//  *                type: string
+//  *                required: true
+//  *              phoneNumber:
+//  *                type: string
+//  *                required: true
+//  *                example: '1234567890'
+//  *     responses:
+//  *       200:
+//  *         description: User created successfully
+//  *       400:
+//  *         description: Bad request
+//  *       500:
+//  *         description: Internal server error
+//  *
+//  */
+// router.post("/signup", validator.signup, controller.signup);
 
 /**
  * @swagger

@@ -8,12 +8,14 @@ datasource db {
 }
 
 enum RoleId {
-  User
   UserAdmin
+  Client
+  Publisher
 }
 
 model User {
   id             String   @id @default(uuid())
+  
   firstName      String?
   lastName       String?
   email          String   @unique
@@ -22,11 +24,12 @@ model User {
   phoneNumber    String
   loginOtp       String?
   loginOtpExpiry DateTime?
-  refreshTokenHash  String?
+
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   clients Client[]
+  publishers Publisher[]
 }
 
 model Client {
@@ -48,11 +51,12 @@ model Client {
 
 model Product {
   id          String   @id @default(uuid())
-  productName String @unique
+  productName String 
   status    Boolean  @default(true)
   isDeleted   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  customFields Json?
 
   publisherProducts PublisherProduct[]
 
@@ -61,6 +65,7 @@ model Product {
 
 model Publisher {
   id            String    @id @default(uuid())
+  userId        String 
   publisherName String
   email         String     @unique
   phoneNo       String?
@@ -69,6 +74,8 @@ model Publisher {
   w9Files       String[]
   description   String?
   isDeleted     Boolean    @default(false)
+
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   products      PublisherProduct[]
   createdAt     DateTime   @default(now())
@@ -122,7 +129,7 @@ model ProposalProduct {
   proposal       Proposal   @relation(fields: [proposalId], references: [id], onDelete: Cascade)
   publisher      Publisher  @relation(fields: [publisherId], references: [id], onDelete: Cascade)
   product        Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
-
+  
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 }

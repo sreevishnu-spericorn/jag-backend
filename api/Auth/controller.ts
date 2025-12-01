@@ -2,22 +2,22 @@ import { Request, Response } from "express";
 import { goodResponse, failedResponse } from "../../helper/response.ts";
 import service from "./service.ts";
 
-const signup = async (req: Request, res: Response): Promise<Response> => {
-   try {
-      const user = await service.signup(req.body);
+// const signup = async (req: Request, res: Response): Promise<Response> => {
+//    try {
+//       const user = await service.signup(req.body);
 
-      return res.json(goodResponse({ user }, "New user Created."));
-   } catch (error: any) {
-      return res
-         .status(error.statusCode || 400)
-         .json(
-            failedResponse(
-               error.message || "Something went wrong",
-               error.statusCode || 400
-            )
-         );
-   }
-};
+//       return res.json(goodResponse({ user }, "New user Created."));
+//    } catch (error: any) {
+//       return res
+//          .status(error.statusCode || 400)
+//          .json(
+//             failedResponse(
+//                error.message || "Something went wrong",
+//                error.statusCode || 400
+//             )
+//          );
+//    }
+// };
 
 const verifyOtp = async (req: Request, res: Response): Promise<Response> => {
    try {
@@ -112,7 +112,7 @@ const refreshToken = async (req: Request, res: Response) => {
 };
 
 export default {
-   signup,
+   // signup,
    verifyOtp,
    loginWithOtp,
    forgotPassword,

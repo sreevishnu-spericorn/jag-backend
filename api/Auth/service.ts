@@ -30,53 +30,53 @@ interface RequestWithCookies extends Request {
    };
 }
 
-async function signup(data: SignupDTO): Promise<{ email: string }> {
-   try {
-      const exists = await prisma.user.findUnique({
-         where: { email: data.email },
-      });
+// async function signup(data: SignupDTO): Promise<{ email: string }> {
+//    try {
+//       const exists = await prisma.user.findUnique({
+//          where: { email: data.email },
+//       });
 
-      if (exists) {
-         throw new BadRequest("User already exists", "EMAIL_EXISTS");
-      }
+//       if (exists) {
+//          throw new BadRequest("User already exists", "EMAIL_EXISTS");
+//       }
 
-      const hashedPassword = await bcrypt.hash(data.password, 10);
+//       const hashedPassword = await bcrypt.hash(data.password, 10);
 
-      await prisma.user.create({
-         data: {
-            email: data.email,
-            password: hashedPassword,
-            firstName: data.firstName,
-            lastName: data.lastName,
-            phoneNumber: data.phoneNumber,
-            roleId: RoleId.User,
-         },
-      });
+//       await prisma.user.create({
+//          data: {
+//             email: data.email,
+//             password: hashedPassword,
+//             firstName: data.firstName,
+//             lastName: data.lastName,
+//             phoneNumber: data.phoneNumber,
+//             roleId: RoleId.User,
+//          },
+//       });
 
-      const payload = {
-         email: data.email,
-         expiry: Date.now() + TWENTY_FOUR_HOURS,
-         expiryTime: "24 Hours.",
-         url: process.env.FRONTEND_URL,
-      };
+//       const payload = {
+//          email: data.email,
+//          expiry: Date.now() + TWENTY_FOUR_HOURS,
+//          expiryTime: "24 Hours.",
+//          url: process.env.FRONTEND_URL,
+//       };
 
-      const html = await ejs.renderFile(
-         path.resolve("modules/template/welcomeEmail.ejs"),
-         { payload, baseurl: process.env.SERVER_URL }
-      );
+//       const html = await ejs.renderFile(
+//          path.resolve("modules/template/welcomeEmail.ejs"),
+//          { payload, baseurl: process.env.SERVER_URL }
+//       );
 
-      await transporter.sendMail({
-         from: process.env.MAILER_FROM,
-         to: payload.email,
-         subject: "Welcome Email",
-         html,
-      });
+//       await transporter.sendMail({
+//          from: process.env.MAILER_FROM,
+//          to: payload.email,
+//          subject: "Welcome Email",
+//          html,
+//       });
 
-      return { email: payload.email };
-   } catch (error) {
-      throw error;
-   }
-}
+//       return { email: payload.email };
+//    } catch (error) {
+//       throw error;
+//    }
+// }
 
 const verifyOtp = async ({
    otp,
@@ -108,13 +108,6 @@ const verifyOtp = async ({
 
       const refreshToken = jwt.sign({ id: user.id }, REFRESH_TOKEN_SECRET, {
          expiresIn: "7d",
-      });
-
-      const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
-
-      await prisma.user.update({
-         where: { id: user.id },
-         data: { refreshTokenHash: hashedRefreshToken },
       });
 
       return {
@@ -287,20 +280,8 @@ async function refresh(req: RequestWithCookies) {
 
    const user = await prisma.user.findUnique({ where: { id: payload.id } });
 
-   console.log("USER ISSSSSSS", user);
-
-   if (!user || !user.refreshTokenHash) {
-      throw new BadRequest("Refresh token not recognized", "TOKEN_INVALID");
-   }
-
-   const isValid = await bcrypt.compare(refreshToken, user.refreshTokenHash);
-
-   if (!isValid) {
-      throw new BadRequest("Refresh token not recognized", "TOKEN_INVALID");
-   }
-
    const accessToken = jwt.sign(
-      { id: user.id, roleId: user.roleId },
+      { id: user?.id, roleId: user?.roleId },
       REFRESH_TOKEN_SECRET,
       { expiresIn: "15m", audience: "access" }
    );
@@ -311,7 +292,7 @@ async function refresh(req: RequestWithCookies) {
 export default {
    verifyOtp,
    generateLoginOtp,
-   signup,
+   // signup,
    sendPasswordResetEmail,
    resetPassword,
    refresh,

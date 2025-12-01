@@ -7,16 +7,16 @@ const router = Router();
 /**
  * @swagger
  * tags:
- *   name: Profile
- *   description: Admin Profile Management API
+ *   name: Client Profile
+ *   description: Client Profile Management API
  */
 
 /**
  * @swagger
- * /api/admin/profileManagement/me:
+ * /api/client/profileManagement/me:
  *   get:
- *     summary: Get the current logged-in admin profile
- *     tags: [Profile]
+ *     summary: Get the current logged-in client profile
+ *     tags: [Client Profile]
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -53,10 +53,10 @@ router.get("/me", controller.getProfile);
 
 /**
  * @swagger
- * /api/admin/profileManagement/update:
+ * /api/client/profileManagement/update:
  *   put:
- *     summary: Update the current logged-in admin profile
- *     tags: [Profile]
+ *     summary: Update the current logged-in client profile
+ *     tags: [Client Profile]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -71,10 +71,10 @@ router.get("/me", controller.getProfile);
  *                 example: "Super"
  *               lastName:
  *                 type: string
- *                 example: "Admin"
+ *                 example: "client"
  *               email:
  *                 type: string
- *                 example: "admin@mailinator.com"
+ *                 example: "client@mailinator.com"
  *               phoneNumber:
  *                 type: string
  *                 example: "9999999999"
@@ -117,10 +117,10 @@ router.put("/update", validator.updateProfile, controller.updateProfile);
 
 /**
  * @swagger
- * /api/admin/profileManagement/change-password:
+ * /api/client/profileManagement/change-password:
  *   put:
- *     summary: Change admin password
- *     tags: [Profile]
+ *     summary: Change client password
+ *     tags: [Client Profile]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -155,10 +155,10 @@ router.put(
 
 /**
  * @swagger
- * /api/admin/profileManagement/logout:
+ * /api/client/profileManagement/logout:
  *   post:
- *     summary: Logout the admin and clear all credentials
- *     tags: [Profile]
+ *     summary: Logout the client and clear all credentials
+ *     tags: [Client Profile]
  *     responses:
  *       200:
  *         description: Logout successful
