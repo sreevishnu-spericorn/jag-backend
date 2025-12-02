@@ -23,18 +23,46 @@ const router = Router();
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - productName
  *             properties:
  *               productName:
  *                 type: string
  *                 example: "Premium Pack"
+ *               customFields:
+ *                 type: array
+ *                 description: Array of dynamic custom field definitions
+ *                 items:
+ *                   oneOf:
+ *                     - $ref: "#/components/schemas/TextField"
+ *                     - $ref: "#/components/schemas/UploadField"
+ *             example:
+ *               productName: "Premium Pack"
+ *               customFields:
+ *                 - fieldType: "text"
+ *                   fieldLabel: "Title"
+ *                   allowedFormats: []
+ *                   characterLimit: 100
+ *                 - fieldType: "text"
+ *                   fieldLabel: "Description"
+ *                   allowedFormats: []
+ *                   characterLimit: 350
+ *                 - fieldType: "upload"
+ *                   fieldLabel: "Post"
+ *                   widthPx: 1980
+ *                   heightPx: 1980
+ *                   maxFileSizeMB: 10
+ *                   allowedFormats: ["png", "jpeg", "jpg"]
+ *                   characterLimit: 250
  *     responses:
  *       201:
  *         description: Product created successfully
  *       400:
- *         description: Validation error or product already exists
+ *         description: Validation or duplication error
  *       500:
- *         description: Internal server error
+ *         description: Server error
  */
+
 router.post("/create", validator.createProduct, controller.createProduct);
 
 /**

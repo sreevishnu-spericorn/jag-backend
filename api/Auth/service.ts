@@ -5,9 +5,6 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import ejs from "ejs";
 
-import { RoleId } from "@prisma/client";
-
-import { SignupDTO } from "../../types/authTypes/SignupDTO.ts";
 import { VerifyOtpDTO } from "../../types/authTypes/VerifyOtpDTO.ts";
 import { ForgetPassTypes } from "../../types/authTypes/ForgetPassTypes.ts";
 import { LoginOtpResult } from "../../types/authTypes/LoginOtpResult.ts";
@@ -20,7 +17,6 @@ import prisma from "../../config/prisma.ts";
 
 const TEMP_TOKEN_SECRET = process.env.JWT_SECRET as string;
 const TEMP_TOKEN_AUDIENCE = "loginOtp";
-const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
 const RESET_PASSWORD_AUDIENCE = "resetPassword";
 const REFRESH_TOKEN_SECRET = process.env.JWT_REFRESH_SECRET as string;
 
@@ -29,54 +25,6 @@ interface RequestWithCookies extends Request {
       refreshToken?: string;
    };
 }
-
-// async function signup(data: SignupDTO): Promise<{ email: string }> {
-//    try {
-//       const exists = await prisma.user.findUnique({
-//          where: { email: data.email },
-//       });
-
-//       if (exists) {
-//          throw new BadRequest("User already exists", "EMAIL_EXISTS");
-//       }
-
-//       const hashedPassword = await bcrypt.hash(data.password, 10);
-
-//       await prisma.user.create({
-//          data: {
-//             email: data.email,
-//             password: hashedPassword,
-//             firstName: data.firstName,
-//             lastName: data.lastName,
-//             phoneNumber: data.phoneNumber,
-//             roleId: RoleId.User,
-//          },
-//       });
-
-//       const payload = {
-//          email: data.email,
-//          expiry: Date.now() + TWENTY_FOUR_HOURS,
-//          expiryTime: "24 Hours.",
-//          url: process.env.FRONTEND_URL,
-//       };
-
-//       const html = await ejs.renderFile(
-//          path.resolve("modules/template/welcomeEmail.ejs"),
-//          { payload, baseurl: process.env.SERVER_URL }
-//       );
-
-//       await transporter.sendMail({
-//          from: process.env.MAILER_FROM,
-//          to: payload.email,
-//          subject: "Welcome Email",
-//          html,
-//       });
-
-//       return { email: payload.email };
-//    } catch (error) {
-//       throw error;
-//    }
-// }
 
 const verifyOtp = async ({
    otp,
@@ -101,7 +49,7 @@ const verifyOtp = async ({
          { id: user.id, roleId: user.roleId },
          process.env.JWT_SECRET as string,
          {
-            expiresIn: "15m",
+            expiresIn: "45m",
             audience: "access",
          }
       );
@@ -283,7 +231,7 @@ async function refresh(req: RequestWithCookies) {
    const accessToken = jwt.sign(
       { id: user?.id, roleId: user?.roleId },
       REFRESH_TOKEN_SECRET,
-      { expiresIn: "15m", audience: "access" }
+      { expiresIn: "45m", audience: "access" }
    );
 
    return { accessToken };

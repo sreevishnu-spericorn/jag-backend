@@ -1,5 +1,6 @@
 import { Router } from "express";
 import controller from "./controller.ts";
+import validator from "./validator.ts";
 
 const router = Router();
 
@@ -102,5 +103,24 @@ const router = Router();
  */
 
 router.get("/list", controller.getClientCampaigns);
+
+/**
+ * @swagger
+ * /api/client/campaignManagement/{id}:
+ *   get:
+ *     summary: Get single campaign by proposalProduct ID
+ *     tags: [Client Campaigns]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Campaign (proposalProduct) ID
+ *     responses:
+ *       200:
+ *         description: Campaign fetched successfully
+ */
+router.get("/:id", validator.getById, controller.getClientCampaignById);
 
 export default router;

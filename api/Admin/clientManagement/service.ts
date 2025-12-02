@@ -79,7 +79,7 @@ export async function createClient(
             userAvatar: logoPath
                ? `${process.env.SERVER_URL}/public/assets/${logoPath}`
                : null,
-            setupUrl: `${process.env.CLIENT_URL}/change-password?email=${data.email}`,
+            setupUrl: `${process.env.CLIENT_URL}/forgot-password`,
          };
 
          const html = await ejs.renderFile(

@@ -4,7 +4,6 @@ import fs from "fs";
 
 const PUB_ASSETS_DIR = "public/assets/publishers";
 
-// ensure directory exists
 if (!fs.existsSync(PUB_ASSETS_DIR)) {
    fs.mkdirSync(PUB_ASSETS_DIR, { recursive: true });
 }

@@ -14,136 +14,156 @@ enum RoleId {
 }
 
 model User {
-  id             String   @id @default(uuid())
-  
+  id String @id @default(uuid())
+
   firstName      String?
   lastName       String?
-  email          String   @unique
+  email          String    @unique
   password       String
   roleId         RoleId
   phoneNumber    String
   loginOtp       String?
   loginOtpExpiry DateTime?
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  clients Client[]
+  clients    Client[]
   publishers Publisher[]
 }
 
 model Client {
-  id            String   @id @default(uuid())
-  userId        String
-  accountName   String
-  contactName   String
-  email         String   @unique
-  phone         String
-  logo          String? 
-  isDeleted     Boolean @default(false)
-  status        String   @default("Active")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String   @id @default(uuid())
+  userId      String
+  accountName String
+  contactName String
+  email       String   @unique
+  phone       String
+  logo        String?
+  isDeleted   Boolean  @default(false)
+  status      String   @default("Active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  proposals Proposal[]
+  proposals      Proposal[]
 }
 
 model Product {
-  id          String   @id @default(uuid())
-  productName String 
-  status    Boolean  @default(true)
-  isDeleted   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(uuid())
+  productName  String
+  status       Boolean  @default(true)
+  isDeleted    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
   customFields Json?
 
   publisherProducts PublisherProduct[]
 
   proposalProducts ProposalProduct[]
+
 }
 
 model Publisher {
-  id            String    @id @default(uuid())
-  userId        String 
+  id            String   @id @default(uuid())
+  userId        String
   publisherName String
-  email         String     @unique
+  email         String   @unique
   phoneNo       String?
   whatsappNo    String?
   logo          String?
   w9Files       String[]
   description   String?
-  isDeleted     Boolean    @default(false)
+  isDeleted     Boolean  @default(false)
 
-  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  products      PublisherProduct[]
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  products  PublisherProduct[]
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
 
   proposalProducts ProposalProduct[]
 }
 
 model PublisherProduct {
-  id          String    @id @default(uuid())
+  id          String @id @default(uuid())
   publisherId String
   productId   String
   price       Float
 
-  publisher   Publisher @relation(fields: [publisherId], references: [id], onDelete: Cascade)
-  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  publisher Publisher @relation(fields: [publisherId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@unique([publisherId, productId]) 
+  @@unique([publisherId, productId])
 }
 
 model Proposal {
-  id             String    @id @default(uuid())
+  id             String  @id @default(uuid())
   clientId       String
   proposalName   String
-  proposalStatus String     @default("Pending")
-  paymentStatus  String     @default("Unpaid")
+  proposalStatus String  @default("Pending")
+  paymentStatus  String  @default("Unpaid")
   ccEmail        String?
-  isDeleted      Boolean    @default(false)
+  isDeleted      Boolean @default(false)
 
-  client         Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  products       ProposalProduct[]
+  client   Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  products ProposalProduct[]
 
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  payments Payment[]
+  payments       Payment[]
 }
 
 model ProposalProduct {
-  id             String    @id @default(uuid())
-  proposalId     String
-  publisherId    String
-  productId      String
-  quantity       Int
-  price          Float   
-  total          Float   
+  id          String @id @default(uuid())
+  proposalId  String
+  publisherId String
+  productId   String
+  quantity    Int
+  price       Float
+  total       Float
 
-  proposal       Proposal   @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-  publisher      Publisher  @relation(fields: [publisherId], references: [id], onDelete: Cascade)
-  product        Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
-  
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  proposal  Proposal  @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  publisher Publisher @relation(fields: [publisherId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  advertisements Advertisement[]
 }
 
 model Payment {
-  id              String    @id @default(uuid())
+  id              String   @id @default(uuid())
   proposalId      String
-  stripePaymentId String    @unique
+  stripePaymentId String   @unique
   amount          Float
-  currency        String    @default("usd")
-  status          String    @default("Succeeded")
+  currency        String   @default("usd")
+  status          String   @default("Succeeded")
   paymentMethod   String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  proposal        Proposal  @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+}
+
+model Advertisement {
+  id                String   @id @default(uuid())
+  proposalProductId String?
+
+  adDate            DateTime
+  adTime            DateTime
+
+  customData        Json
+  isDeleted         Boolean   @default(false)
+  isApprovedByPublisher Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  proposalProduct ProposalProduct @relation(fields: [proposalProductId], references: [id], onDelete: Cascade)
 }

@@ -9,7 +9,13 @@ async function getClientCampaigns(userId: string, query: any) {
    const { page, limit, search, fromDate, toDate, skip } =
       parseListQuery(query);
 
-   console.log("111111111111111");
+   const cacheKey = `client:campaigns:${userId}:${page}:${limit}:${search || ""}:${fromDate || ""}:${toDate || ""}`;
+   const cached = await safeRedisGet(cacheKey);
+
+   if (cached) {
+      console.log("Data from redis")
+      return JSON.parse(cached);
+   }
 
    const client = await prisma.client.findFirst({
       where: { userId, isDeleted: false },
@@ -17,25 +23,29 @@ async function getClientCampaigns(userId: string, query: any) {
    });
 
    if (!client) throw new Error("Client not found");
-
    const clientId = client.id;
 
-   const cacheKey = `client:${clientId}:campaigns:page=${page}:limit=${limit}:search=${search}:from=${fromDate?.toISOString()}:to=${toDate?.toISOString()}`;
-   const cached = await safeRedisGet(cacheKey);
-
    const where: any = {
-      isDeleted: false,
-      clientId,
-      proposalStatus: "Paid",
-      paymentStatus: "Paid",
+      proposal: {
+         clientId,
+         proposalStatus: "Paid",
+         paymentStatus: "Paid",
+      },
    };
 
    if (search) {
       where.OR = [
-         { proposalName: { contains: search, mode: "insensitive" } },
          {
-            client: {
-               accountName: { contains: search, mode: "insensitive" },
+            product: { productName: { contains: search, mode: "insensitive" } },
+         },
+         {
+            publisher: {
+               publisherName: { contains: search, mode: "insensitive" },
+            },
+         },
+         {
+            proposal: {
+               proposalName: { contains: search, mode: "insensitive" },
             },
          },
       ];
@@ -47,94 +57,171 @@ async function getClientCampaigns(userId: string, query: any) {
       if (toDate) where.createdAt.lte = toDate;
    }
 
-   // 4. Fetch base campaigns + count
-   const [baseCampaigns, total] = await Promise.all([
-      prisma.proposal.findMany({
+   const [rows, total] = await Promise.all([
+      prisma.proposalProduct.findMany({
          where,
+         orderBy: { createdAt: "desc" },
          skip,
          take: limit,
-         orderBy: { createdAt: "desc" },
-         select: {
-            id: true,
-            proposalName: true,
-            proposalStatus: true,
-            paymentStatus: true,
-            createdAt: true,
-            updatedAt: true,
-            clientId: true,
 
-            products: {
+         include: {
+            product: {
                select: {
                   id: true,
-                  quantity: true,
-                  price: true,
-                  total: true,
-                  product: {
-                     select: {
-                        id: true,
-                        productName: true,
-                        status: true,
-                        isDeleted: true,
-                        customFields: true,
-                        createdAt: true,
-                        updatedAt: true,
-                     },
-                  },
-                  publisher: {
-                     select: { id: true, publisherName: true },
-                  },
+                  productName: true,
+                  status: true,
+                  customFields: true,
                },
             },
-
-            client: {
+            publisher: {
                select: {
-                  accountName: true,
-                  email: true,
                   id: true,
-                  logo: true,
-                  phone: true,
+                  publisherName: true,
+               },
+            },
+            proposal: {
+               select: {
+                  id: true,
+                  proposalName: true,
+                  createdAt: true,
+                  paymentStatus: true,
+                  proposalStatus: true,
+
+                  client: {
+                     select: {
+                        id: true,
+                        accountName: true,
+                        email: true,
+                        logo: true,
+                        phone: true,
+                     },
+                  },
                },
             },
          },
       }),
 
-      prisma.proposal.count({ where }),
+      prisma.proposalProduct.count({ where }),
    ]);
 
-   // 5. Calculate totals from proposalProduct (same logic as proposals)
-   const proposalIds = baseCampaigns.map((p) => p.id);
+   const campaigns = rows.map((i) => ({
+      id: i.id,
+      quantity: i.quantity,
+      price: i.price,
+      total: i.total,
+      createdAt: i.createdAt,
+      updatedAt: i.updatedAt,
+      product: i.product,
+      publisher: i.publisher,
 
-   const aggregatedTotals = await prisma.proposalProduct.groupBy({
-      by: ["proposalId"],
-      where: { proposalId: { in: proposalIds } },
-      _sum: { total: true },
-   });
+      proposal: {
+         id: i.proposal.id,
+         proposalName: i.proposal.proposalName,
+         createdAt: i.proposal.createdAt,
+         paymentStatus: i.proposal.paymentStatus,
+         proposalStatus: i.proposal.proposalStatus,
+      },
 
-   const totalMap = new Map(
-      aggregatedTotals.map((a) => [a.proposalId, a._sum.total || 0])
-   );
-
-   // 6. Attach totals
-   const campaigns = baseCampaigns.map((p) => ({
-      ...p,
-      totalAmount: totalMap.get(p.id) || 0,
+      client: i.proposal.client,
    }));
 
-   // 7. Final response structure
-   const result = {
+   const response = {
       campaigns,
       pagination: {
          total,
          page,
-         pages: Math.ceil(total / limit),
          limit,
+         pages: Math.ceil(total / limit),
       },
    };
 
-   // 8. Cache
-   await safeRedisSet(cacheKey, result, 60);
+   await safeRedisSet(cacheKey, response, 60);
 
-   return result;
+   return response;
 }
 
-export default { getClientCampaigns };
+async function getClientCampaignById(userId: string, id: string) {
+   const cacheKey = `client:campaign:${id}`;
+   const cached = await safeRedisGet(cacheKey);
+
+   if (cached) return JSON.parse(cached);
+
+   const client = await prisma.client.findFirst({
+      where: { userId, isDeleted: false },
+      select: { id: true },
+   });
+
+   if (!client) throw new Error("Client not found");
+
+   const campaign = await prisma.proposalProduct.findUnique({
+      where: { id },
+      include: {
+         product: {
+            select: {
+               id: true,
+               productName: true,
+               status: true,
+               customFields: true,
+            },
+         },
+         publisher: {
+            select: {
+               id: true,
+               publisherName: true,
+            },
+         },
+         proposal: {
+            select: {
+               id: true,
+               proposalName: true,
+               createdAt: true,
+               proposalStatus: true,
+               paymentStatus: true,
+               clientId: true,
+               client: {
+                  select: {
+                     id: true,
+                     accountName: true,
+                     email: true,
+                     logo: true,
+                     phone: true,
+                  },
+               },
+            },
+         },
+      },
+   });
+
+   if (!campaign) throw new Error("Campaign not found");
+
+   if (campaign.proposal.clientId !== client.id) {
+      throw new Error("Unauthorized: Campaign does not belong to this client");
+   }
+
+   const response = {
+      id: campaign.id,
+      quantity: campaign.quantity,
+      price: campaign.price,
+      total: campaign.total,
+      createdAt: campaign.createdAt,
+      updatedAt: campaign.updatedAt,
+      product: campaign.product,
+      publisher: campaign.publisher,
+
+      proposal: {
+         id: campaign.proposal.id,
+         proposalName: campaign.proposal.proposalName,
+         createdAt: campaign.proposal.createdAt,
+         paymentStatus: campaign.proposal.paymentStatus,
+         proposalStatus: campaign.proposal.proposalStatus,
+      },
+
+      client: campaign.proposal.client,
+   };
+
+   await safeRedisSet(cacheKey, response, 60);
+
+   return response;
+}
+
+export default { getClientCampaignById, getClientCampaigns };
